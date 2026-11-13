@@ -1,1 +1,232 @@
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Access Rides GPS Tracker</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#eef3f8;font-family:Arial,sans-serif;color:#172b43}
+header{background:#123554;color:white;padding:20px;text-align:center}
+header h1{margin:0;font-size:25px}
+header p{margin:6px 0}
+main{max-width:850px;margin:auto;padding:16px}
+section{background:white;padding:20px;border-radius:14px;margin-bottom:16px;box-shadow:0 2px 9px #0001}
+input,button{width:100%;padding:13px;margin:8px 0;border-radius:8px;font-size:16px}
+input{border:1px solid #bbc7d5}
+button{background:#16794b;color:white;border:0;font-weight:bold}
+button:disabled{opacity:.5}
+.secondary{background:#40576e}
+#map{height:380px;border-radius:12px;margin-top:12px}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stats div{background:#edf3f8;padding:12px;border-radius:9px;overflow-wrap:anywhere}
+small{display:block;color:#617389;margin-bottom:5px}
+[hidden]{display:none!important}
+.error{color:#b42318}
+footer{text-align:center;padding:15px;font-size:12px}
+</style>
+</head>
+<body>
+<header>
+<h1>🚐 ACCESS RIDES</h1>
+<p>Airport Taxi Services • Live GPS Tracker</p>
+</header>
+<main>
+<section id="login">
+<h2>Secure Login</h2>
+<form id="loginForm">
+<input id="email" type="email" placeholder="Email address" required>
+<input id="password" type="password" placeholder="Password" required>
+<button>Sign In</button>
+</form>
+<p id="error" class="error"></p>
+</section>
+
+<section id="app" hidden>
+<p id="identity"></p>
+<button id="logout" class="secondary">Log Out</button>
+
+<div id="driver" hidden>
+<h2>Driver GPS</h2>
+<p>Access Rides Vehicle 1</p>
+<button id="start">Start GPS Sharing</button>
+<button id="stop" class="secondary" disabled>Stop Sharing</button>
+<p id="driverStatus">GPS not started</p>
+<p id="driverCoords"></p>
+<p>Keep this page open while tracking. Android may pause GPS when the browser is in the background or the screen locks.</p>
+</div>
+
+<div id="admin" hidden>
+<h2>Live Vehicle Dashboard</h2>
+<div class="stats">
+<div><small>Vehicle</small><b>Vehicle 1</b></div>
+<div><small>Status</small><b id="status">Waiting for GPS</b></div>
+<div><small>Speed</small><b id="speed">—</b></div>
+<div><small>Last update</small><b id="updated">—</b></div>
+</div>
+<div id="map"></div>
+<p id="coords">No GPS received</p>
+<p id="accuracy"></p>
+<p id="mapError" class="error"></p>
+</div>
+</section>
+</main>
+<footer>Access Rides & Airport Taxi Services • Dominica</footer>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script type="module">
+import {initializeApp} from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
+import {getAuth,signInWithEmailAndPassword,signOut,onAuthStateChanged} from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
+import {getDatabase,ref,onValue,set,onDisconnect,serverTimestamp} from "https://www.gstatic.com/firebasejs/11.10.0/firebase-database.js";
+
+const firebaseConfig={
+ apiKey:"AIzaSyD5eLq0stOSjkB5ho75dkaD5F-eman6r6Q",
+ authDomain:"access-rides.firebaseapp.com",
+ databaseURL:"https://access-rides-default-rtdb.firebaseio.com",
+ projectId:"access-rides",
+ appId:"1:791788610379:web:bcd5e91d770a886fe4bece"
+};
+const owner="TMw5M7XKZsNwRivDFCq1BKG6bcg2";
+const driver="bFkAdF7W6ZgRRnLabWFKGeZSaNx2";
+const app=initializeApp(firebaseConfig);
+const auth=getAuth(app);
+const db=getDatabase(app);
+const $=id=>document.getElementById(id);
+const locationRef=ref(db,"vehicles/vehicle-1/location");
+const presenceRef=ref(db,"vehicles/vehicle-1/presence");
+
+let watch=null,map=null,marker=null,unsubscribe=null;
+let active=false,last=null;
+
+$("loginForm").onsubmit=async e=>{
+ e.preventDefault();
+ $("error").textContent="";
+ try{
+  await signInWithEmailAndPassword(auth,$("email").value,$("password").value);
+ }catch(e){$("error").textContent="Login failed: "+e.code;}
+};
+
+$("logout").onclick=async()=>{
+ if(active)await stopGPS();
+ await signOut(auth);
+};
+
+onAuthStateChanged(auth,async user=>{
+ if(unsubscribe){unsubscribe();unsubscribe=null;}
+ $("login").hidden=!!user;
+ $("app").hidden=!user;
+ $("driver").hidden=true;
+ $("admin").hidden=true;
+ if(!user)return;
+ $("identity").textContent=user.email;
+ if(user.uid===driver){
+  $("driver").hidden=false;
+ }else if(user.uid===owner){
+  $("admin").hidden=false;
+  if(!map){
+   map=L.map("map").setView([15.4149,-61.371],10);
+   L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{
+    attribution:"© OpenStreetMap contributors",
+    maxZoom:19
+   }).addTo(map);
+  }
+  setTimeout(()=>map.invalidateSize(),150);
+  unsubscribe=onValue(locationRef,s=>{
+   last=s.val();render();
+  },e=>$("mapError").textContent=e.message);
+ }else{
+  await signOut(auth);
+  $("error").textContent="Unauthorized account";
+ }
+});
+
+$("start").onclick=async()=>{
+ if(active)return;
+ if(!navigator.geolocation){
+  $("driverStatus").textContent="GPS unavailable";
+  return;
+ }
+ $("start").disabled=true;
+ try{
+  await onDisconnect(presenceRef).set({
+   online:false,changedAt:serverTimestamp()
+  });
+  await set(presenceRef,{
+   online:true,changedAt:serverTimestamp()
+  });
+  active=true;
+  watch=navigator.geolocation.watchPosition(async pos=>{
+   if(!active)return;
+   const p=pos.coords;
+   const data={
+    lat:p.latitude,lng:p.longitude,
+    accuracy:p.accuracy,
+    speedKmh:p.speed==null?null:Math.max(0,p.speed*3.6),
+    heading:p.heading,
+    recordedAt:pos.timestamp,
+    updatedAt:serverTimestamp()
+   };
+   try{
+    await set(locationRef,data);
+    $("driverStatus").textContent="GPS sharing active";
+    $("driverCoords").textContent=
+     p.latitude.toFixed(6)+", "+p.longitude.toFixed(6);
+   }catch(e){
+    $("driverStatus").textContent="Upload error: "+e.message;
+   }
+  },e=>{
+   $("driverStatus").textContent="GPS error: "+e.message;
+  },{enableHighAccuracy:true,maximumAge:0,timeout:20000});
+  $("stop").disabled=false;
+ }catch(e){
+  active=false;
+  $("start").disabled=false;
+  $("driverStatus").textContent=e.message;
+ }
+};
+
+$("stop").onclick=stopGPS;
+async function stopGPS(){
+ active=false;
+ if(watch!==null){
+  navigator.geolocation.clearWatch(watch);
+  watch=null;
+ }
+ $("start").disabled=false;
+ $("stop").disabled=true;
+ $("driverStatus").textContent="GPS stopped";
+ try{
+  await set(presenceRef,{
+   online:false,changedAt:serverTimestamp()
+  });
+  await onDisconnect(presenceRef).cancel();
+ }catch(e){console.error(e);}
+}
+
+function render(){
+ if(!last)return;
+ const p=last;
+ if(typeof p.lat!=="number"||typeof p.lng!=="number")return;
+ const stale=!p.updatedAt||Date.now()-p.updatedAt>60000;
+ $("status").textContent=stale?"GPS stale":"GPS active";
+ $("speed").textContent=p.speedKmh==null?"—":Math.round(p.speedKmh)+" km/h";
+ $("updated").textContent=new Date(p.updatedAt).toLocaleString();
+ $("coords").textContent=p.lat.toFixed(6)+", "+p.lng.toFixed(6);
+ $("accuracy").textContent="GPS accuracy ±"+Math.round(p.accuracy||0)+" m";
+ if(!marker){
+  marker=L.marker([p.lat,p.lng]).addTo(map);
+  map.setView([p.lat,p.lng],15);
+ }else{
+  marker.setLatLng([p.lat,p.lng]);
+ }
+}
+setInterval(()=>{
+ if(auth.currentUser?.uid===owner&&last)render();
+},15000);
+</script>
+</body>
+</html>
+
