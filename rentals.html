@@ -1,1 +1,97 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Access Rides | Vehicle Rentals</title><style>:root{font-family:Arial,sans-serif;color:#183047;background:#edf3f7}*{box-sizing:border-box}body{margin:0}header{background:#123653;color:white;padding:26px 18px;text-align:center}header h1{margin:0}main{max-width:760px;margin:22px auto;padding:0 15px}.card{background:white;border-radius:14px;padding:20px;box-shadow:0 2px 12px #0001;margin-bottom:18px}label{display:block;font-weight:600;margin:14px 0 5px}input,select,textarea{width:100%;padding:12px;border:1px solid #c3cfd9;border-radius:8px;font:inherit}button{border:0;border-radius:9px;background:#08754d;color:white;padding:14px 18px;font-size:16px;font-weight:bold;width:100%;margin-top:15px}button:disabled{background:#9ca9ad}.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.note{color:#5c6b77;font-size:13px}.total{font-size:22px;font-weight:bold}.choice{display:flex;gap:8px;align-items:center;margin:9px 0}.choice input{width:auto}#result{white-space:pre-wrap}a{color:#076ca4}@media(max-width:520px){.grid{grid-template-columns:1fr}}</style></head><body><header><h1>🚙 ACCESS RIDES</h1><p>Airport Taxi Services • Vehicle Rentals • Dominica</p></header><main><section class="card"><h2>Request a Vehicle Rental</h2><p class="note">Booking request only. Availability and payment will be confirmed by Access Rides. No payment is collected on this page.</p><form id="form"><label for="vehicle">Vehicle</label><select id="vehicle" required><option value="">Choose a vehicle</option><option value="Frontier TL813">Frontier TL813</option></select><div class="grid"><div><label for="pickup">Pickup date</label><input id="pickup" type="date" required></div><div><label for="returnDate">Return date</label><input id="returnDate" type="date" required></div></div><label for="pickupPlace">Pickup location</label><input id="pickupPlace" placeholder="e.g. Douglas–Charles Airport" required><div class="grid"><div><label for="name">Full name</label><input id="name" autocomplete="name" required></div><div><label for="phone">Phone / WhatsApp</label><input id="phone" type="tel" required></div></div><label for="email">Email</label><input id="email" type="email" autocomplete="email" required><label for="notes">Additional requests</label><textarea id="notes" rows="2"></textarea><h3>Payment preference</h3><label class="choice"><input type="radio" name="payment" value="Deposit" checked> Pay deposit online</label><label class="choice"><input type="radio" name="payment" value="Full amount"> Pay full amount online</label><p class="note">The amount and secure payment link will be provided after vehicle availability and rates are confirmed. Do not send card details in messages.</p><button type="submit">Prepare booking request</button></form></section><section class="card" id="output" hidden><h2>Your booking request</h2><p id="result"></p><button id="emailButton" type="button">Open email to send request</button><p class="note">Your request is not submitted until you send the email. It is not a confirmed reservation.</p></section><p class="note">Owner GPS dashboard: <a href="./">Access Rides Tracker</a></p></main><script>const f=document.getElementById('form'),o=document.getElementById('output'),r=document.getElementById('result');const today=new Date().toISOString().slice(0,10);document.getElementById('pickup').min=today;document.getElementById('returnDate').min=today;document.getElementById('pickup').addEventListener('change',e=>{document.getElementById('returnDate').min=e.target.value});f.addEventListener('submit',e=>{e.preventDefault();const p=document.getElementById('pickup').value,t=document.getElementById('returnDate').value;if(t<=p){alert('Return date must be after pickup date');return}const v=id=>document.getElementById(id).value.trim();const days=Math.round((new Date(t+'T12:00:00')-new Date(p+'T12:00:00'))/86400000);const message=`Access Rides rental request\nVehicle: ${v('vehicle')}\nPickup: ${p}\nReturn: ${t}\nRental days: ${days}\nPickup location: ${v('pickupPlace')}\nCustomer: ${v('name')}\nPhone: ${v('phone')}\nEmail: ${v('email')}\nPayment preference: ${document.querySelector('input[name=payment]:checked').value}\nNotes: ${v('notes')}\n\nThis is a request, not a confirmed booking. Price and payment instructions pending.`;r.textContent=message;o.hidden=false;o.scrollIntoView({behavior:'smooth'});document.getElementById('emailButton').onclick=()=>{location.href='mailto:?subject='+encodeURIComponent('Access Rides rental request - '+v('vehicle'))+'&body='+encodeURIComponent(message)};});</script></body></html>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Access Rides Vehicle Rentals</title>
+<style>
+body{margin:0;font-family:Arial,sans-serif;background:#edf2f6;color:#183047}
+header{background:#102e47;color:white;padding:30px 18px;text-align:center}
+main{max-width:620px;margin:24px auto;padding:22px;background:white;border-radius:15px}
+label{display:block;margin-top:17px;font-weight:bold}
+input,select,button{box-sizing:border-box;width:100%;padding:13px;margin-top:7px;font-size:16px;border:1px solid #bdc8d1;border-radius:8px}
+button{background:#126a4a;color:white;border:0;font-weight:bold;margin-top:20px}
+.summary{background:#e9f3f1;padding:16px;border-radius:10px;margin-top:20px}
+small{color:#526272}
+</style>
+</head>
+<body>
+<header>
+<h1>🚙 ACCESS RIDES</h1>
+<p>Airport Taxi Services • Vehicle Rentals • Dominica</p>
+</header>
+<main>
+<h2>Request a Vehicle Rental</h2>
+<p>Choose your vehicle and dates to see the estimated rental cost.</p>
+<form id="booking">
+<label>Vehicle</label>
+<select id="vehicle" required>
+<option value="">Choose a vehicle</option>
+<option value="150">Small Car — EC$150/day</option>
+<option value="175">Sedan — EC$175/day</option>
+<option value="200">SUV — EC$200/day</option>
+<option value="225">Pickup Truck (Frontier TL813) — EC$225/day</option>
+<option value="250">Premium SUV / 4×4 — EC$250/day</option>
+</select>
+<label>Pickup date</label>
+<input id="start" type="date" required>
+<label>Return date</label>
+<input id="end" type="date" required>
+<label>Pickup location</label>
+<input id="location" required placeholder="e.g. Douglas-Charles Airport">
+<label>Full name</label>
+<input id="name" required>
+<label>Phone / WhatsApp</label>
+<input id="phone" type="tel" required>
+<label>Email</label>
+<input id="email" type="email" required>
+<label>Payment preference</label>
+<select id="payment">
+<option value="25">25% deposit</option>
+<option value="100">Full payment</option>
+</select>
+<div class="summary" id="summary">Choose a vehicle and rental dates to see your total.</div>
+<button type="submit">Prepare Booking Request</button>
+</form>
+<p><small>Booking request only. Availability and payment must be confirmed by Access Rides. No payment is collected on this page.</small></p>
+</main>
+<script>
+const ids=["vehicle","start","end","payment"];
+ids.forEach(id=>document.getElementById(id).addEventListener("change",calculate));
+function calculate(){
+const rate=Number(document.getElementById("vehicle").value);
+const start=document.getElementById("start").value;
+const end=document.getElementById("end").value;
+const summary=document.getElementById("summary");
+if(!rate||!start||!end){summary.textContent="Choose a vehicle and rental dates to see your total.";return null;}
+const days=Math.round((Date.parse(end)-Date.parse(start))/86400000);
+if(days<1){summary.textContent="Return date must be after pickup date.";return null;}
+const total=rate*days;
+const percent=Number(document.getElementById("payment").value);
+const due=total*percent/100;
+summary.innerHTML="<strong>"+days+" day(s) × EC$"+rate+"</strong><p>Rental total: EC$"+total.toFixed(2)+"</p><p>"+percent+"% payment: EC$"+due.toFixed(2)+"</p><p>Balance: EC$"+(total-due).toFixed(2)+"</p>";
+return {days,rate,total,due};
+}
+document.getElementById("booking").addEventListener("submit",function(e){
+e.preventDefault();
+const result=calculate();
+if(!result)return;
+const v=document.getElementById("vehicle");
+const get=id=>document.getElementById(id).value;
+const message="ACCESS RIDES RENTAL REQUEST\n"+
+"Vehicle: "+v.options[v.selectedIndex].text+"\n"+
+"Pickup: "+get("start")+"\nReturn: "+get("end")+"\n"+
+"Location: "+get("location")+"\n"+
+"Name: "+get("name")+"\nPhone: "+get("phone")+"\n"+
+"Email: "+get("email")+"\n"+
+"Rental total: EC$"+result.total.toFixed(2)+"\n"+
+"Payment preference: "+get("payment")+"%\n"+
+"Estimated amount due: EC$"+result.due.toFixed(2);
+window.location.href="mailto:d_julez@live.com?subject="+
+encodeURIComponent("Access Rides Rental Request")+
+"&body="+encodeURIComponent(message);
+});
+</script>
+</body>
+</html>
