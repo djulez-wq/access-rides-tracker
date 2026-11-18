@@ -211,7 +211,45 @@ result.className="error";
 saveBtn.disabled=false;
 }
 });
-root.appendChild(card);
+const waBtn = document.createElement("button");
+waBtn.textContent = "Send WhatsApp Confirmation";
+waBtn.style.background = "#16834e";
+waBtn.style.width = "100%";
+waBtn.disabled = status !== "Approved";
+
+waBtn.onclick = () => {
+const phone = String(b.phone || b.whatsapp || "").replace(/\D/g,"");
+const number = phone.length === 7 ? "1767" + phone : phone;
+
+if(number.length < 8 || number.length > 15){
+alert("Invalid customer phone number.");
+return;
+}
+
+const msg = [
+"ACCESS RIDES & AIRPORT TAXI SERVICES",
+"",
+"Dear " + title.textContent + ",",
+"Your rental booking has been approved.",
+"",
+"Booking reference: " + id,
+"Vehicle: " + (b.vehicle || b.vehicleType),
+"Pickup date: " + b.pickupDate,
+"Return date: " + b.returnDate,
+"Pickup location: " + b.pickupLocation,
+"Total: " + money(total),
+"Amount paid: " + money(paid),
+"Outstanding balance: " + balance,
+"",
+"Thank you for choosing Access Rides.",
+"More than a ride..."
+].join("\n");
+
+window.open("https://wa.me/" + number + "?text=" + encodeURIComponent(msg),"_blank");
+};
+
+card.appendChild(waBtn);
+  root.appendChild(card);
 }
 }
 
