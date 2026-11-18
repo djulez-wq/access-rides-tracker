@@ -1,30 +1,37 @@
-
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Access Rides | Owner Bookings</title>
-  <style>
-    body {font-family:Arial,sans-serif;background:#f1f5f9;margin:0;color:#102a43}
-    header {background:#102a43;color:white;padding:24px;text-align:center}
-    main {max-width:850px;margin:25px auto;padding:16px}
-    .card {background:white;padding:22px;border-radius:12px;box-shadow:0 2px 8px #0001}
-    a {color:#0875c5}
-  </style>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Access Rides | Owner Bookings</title>
+<style>
+*{box-sizing:border-box}body{font-family:Arial,sans-serif;background:#f1f5f9;color:#102a43;margin:0}header{background:#102a43;color:#fff;text-align:center;padding:28px 15px}header h1{margin:0 0 8px}main{max-width:950px;margin:24px auto;padding:0 14px}.card{background:white;border-radius:14px;padding:22px;margin-bottom:18px;box-shadow:0 2px 9px #0001}label{display:block;font-weight:bold;margin:12px 0 6px}input,select,button{font:inherit;padding:11px;border-radius:7px;border:1px solid #cbd5e1;max-width:100%}input{width:100%}button{background:#1166a0;color:#fff;border:0;cursor:pointer;margin:6px 6px 6px 0}button:disabled{opacity:.55}button.secondary{background:#475569}.muted{color:#526478}.error{color:#a11}#app,#signout{display:none}.booking{border:1px solid #dbe4ed;border-radius:10px;padding:16px;margin:12px 0;overflow-wrap:anywhere}.booking h3{margin:0 0 10px}.detail{margin:6px 0}.actions{display:flex;flex-wrap:wrap;gap:8px;align-items:end}.actions>div{flex:1;min-width:150px}.actions button{margin:0}.pill{display:inline-block;background:#e2e8f0;border-radius:12px;padding:3px 10px}.note{background:#fff8e1;padding:12px;border-radius:8px}
+</style>
 </head>
 <body>
-  <header>
-    <h1>ACCESS RIDES</h1>
-    <p>Owner Rental Booking Dashboard</p>
-  </header>
-  <main>
-    <div class="card">
-      <h2>Booking Management</h2>
-      <p>Dashboard setup in progress.</p>
-      <p>Next: connect secure owner login and Firebase bookings.</p>
-      <p><a href="rentals.html">View Customer Rental Page</a></p>
-    </div>
-  </main>
-</body>
-</html>
+<header><h1>ACCESS RIDES</h1><p>Owner Rental Booking Dashboard</p></header>
+<main>
+<section class="card" id="loginPanel"><h2>Owner sign in</h2><p class="muted">Use your existing Access Rides Firebase owner email and password.</p><form id="loginForm"><label for="email">Email</label><input id="email" type="email" autocomplete="username" required><label for="password">Password</label><input id="password" type="password" autocomplete="current-password" required><button type="submit" id="loginBtn">Sign in</button></form><p id="loginMsg" role="status"></p></section>
+<section id="app"><div class="card"><h2>Booking management</h2><p id="account" class="muted"></p><button id="signout" class="secondary">Sign out</button><p class="note">Customer rental requests are not yet connected to this database. Only records already saved under Firebase <code>bookings</code> will appear here. No payment is collected by this dashboard.</p><p><a href="rentals.html">View customer rental page</a></p></div><div class="card"><h2>Rental requests</h2><p id="status" role="status">Loading…</p><div id="bookings"></div></div></section>
+</main>
+<script type="module">
+import {initializeApp} from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';
+import {getAuth,onAuthStateChanged,signInWithEmailAndPassword,signOut} from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
+import {getDatabase,ref,onValue,update} from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js';
+const firebaseConfig={apiKey:'AIzaSyD5eLq0stOSjkB5ho75dkaD5F-eman6r6Q',authDomain:'access-rides.firebaseapp.com',databaseURL:'https://access-rides-default-rtdb.firebaseio.com',projectId:'access-rides',storageBucket:'access-rides.firebasestorage.app',messagingSenderId:'791788610379',appId:'1:791788610379:web:bcd5e91d770a886fe4bece',measurementId:'G-SJ510R4Z77'};
+const OWNER_UID='TMw5M7XKZsNwRivDFCq1BKG6bcg2';
+const app=initializeApp(firebaseConfig),auth=getAuth(app),db=getDatabase(app);
+const $=id=>document.getElementById(id);let unsubscribe=null;
+function escapeHTML(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function field(label,value){return `<p class="detail"><strong>${label}:</strong> ${escapeHTML(value||'—')}</p>`;}
+function money(v){const n=Number(v);return Number.isFinite(n)?'EC$'+n.toFixed(2):'—';}
+function renderBookings(raw){const root=$('bookings');root.replaceChildren();const entries=Object.entries(raw||{});$('status').textContent=entries.length?`${entries.length} booking record(s)`:'No bookings saved in Firebase yet.';
+for(const [id,b] of entries){if(!b||typeof b!=='object')continue;const card=document.createElement('article');card.className='booking';const status=String(b.status||'Pending');const total=b.total??b.rentalTotal;const paid=b.amountPaid??b.paid??0;const balance=total==null?'—':money(Math.max(0,Number(total)-Number(paid)));
+card.innerHTML=`<h3>${escapeHTML(b.fullName||b.name||b.customerName||'Booking request')} <span class="pill">${escapeHTML(status)}</span></h3>${field('Vehicle',b.vehicle||b.vehicleType)}${field('Pickup',b.pickupDate)}${field('Return',b.returnDate)}${field('Pickup location',b.pickupLocation)}${field('Phone',b.phone||b.whatsapp)}${field('Email',b.email)}${field('Payment preference',b.paymentPreference)}${field('Total',total==null?'—':money(total))}${field('Amount paid (recorded)',money(paid))}${field('Balance (estimated)',balance)}<div class="actions"><div><label>Booking status</label><select class="booking-status"><option>Pending</option><option>Approved</option><option>Rejected</option><option>Completed</option></select></div><div><label>Amount paid (EC$)</label><input class="booking-paid" type="number" min="0" step="0.01" value="${Number.isFinite(Number(paid))?Number(paid):0}"></div><div><button class="save">Save changes</button></div></div><p class="result" role="status"></p>`;
+const select=card.querySelector('select');if(['Pending','Approved','Rejected','Completed'].includes(status))select.value=status;
+card.querySelector('.save').addEventListener('click',async()=>{const btn=card.querySelector('.save'),msg=card.querySelector('.result');const amount=Number(card.querySelector('.booking-paid').value);if(!Number.isFinite(amount)||amount<0){msg.textContent='Enter a valid nonnegative payment amount.';return;}btn.disabled=true;msg.textContent='Saving…';try{await update(ref(db,'bookings/'+id),{status:select.value,amountPaid:amount});msg.textContent='Saved.';}catch(e){msg.textContent='Could not save: '+e.message;}finally{btn.disabled=false;}});
+root.appendChild(card);}}
+$('loginForm').addEventListener('submit',async e=>{e.preventDefault();$('loginBtn').disabled=true;$('loginMsg').textContent='Signing in…';try{await signInWithEmailAndPassword(auth,$('email').value,$('password').value);$('password').value='';}catch(e){$('loginMsg').textContent='Sign in failed: '+e.message;}finally{$('loginBtn').disabled=false;}});
+$('signout').addEventListener('click',()=>signOut(auth));
+onAuthStateChanged(auth,async user=>{if(unsubscribe){unsubscribe();unsubscribe=null;}const allowed=user?.uid===OWNER_UID;$('loginPanel').style.display=allowed?'none':'block';$('app').style.display=allowed?'block':'none';$('signout').style.display=allowed?'inline-block';$('bookings').replaceChildren();if(!user){$('loginMsg').textContent='';return;}if(!allowed){$('loginMsg').textContent='This account is not authorized as the Access Rides owner.';await signOut(auth);return;}$('account').textContent='Signed in as '+user.email;unsubscribe=onValue(ref(db,'bookings'),snap=>renderBookings(snap.val()),err=>{$('status').textContent='Unable to load bookings: '+err.message;});});
+</script>
+</body></html>
