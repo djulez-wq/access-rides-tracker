@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -11,21 +10,19 @@ header{background:#102e47;color:white;padding:30px 18px;text-align:center}
 main{max-width:620px;margin:24px auto;padding:22px;background:white;border-radius:15px}
 label{display:block;margin-top:17px;font-weight:bold}
 input,select,button{box-sizing:border-box;width:100%;padding:13px;margin-top:7px;font-size:16px;border:1px solid #bdc8d1;border-radius:8px}
-button{background:#126a4a;color:white;border:0;font-weight:bold;margin-top:20px}
+button{background:#126a4a;color:white;border:0;font-weight:bold;margin-top:20px;cursor:pointer}
+button:disabled{opacity:.55;cursor:wait}
 .summary{background:#e9f3f1;padding:16px;border-radius:10px;margin-top:20px}
-small{color:#526272}
+small{color:#526272}#result{margin-top:15px;overflow-wrap:anywhere}.error{color:#b91c1c}.success{color:#166534}
 </style>
 </head>
 <body>
-<header>
-<h1>🚙 ACCESS RIDES</h1>
-<p>Airport Taxi Services • Vehicle Rentals • Dominica</p>
-</header>
+<header><h1>🚙 ACCESS RIDES</h1><p>Airport Taxi Services • Vehicle Rentals • Dominica</p></header>
 <main>
 <h2>Request a Vehicle Rental</h2>
 <p>Choose your vehicle and dates to see the estimated rental cost.</p>
 <form id="booking">
-<label>Vehicle</label>
+<label for="vehicle">Vehicle</label>
 <select id="vehicle" required>
 <option value="">Choose a vehicle</option>
 <option value="150">Small Car — EC$150/day</option>
@@ -34,64 +31,95 @@ small{color:#526272}
 <option value="225">Pickup Truck (Frontier TL813) — EC$225/day</option>
 <option value="250">Premium SUV / 4×4 — EC$250/day</option>
 </select>
-<label>Pickup date</label>
-<input id="start" type="date" required>
-<label>Return date</label>
-<input id="end" type="date" required>
-<label>Pickup location</label>
-<input id="location" required placeholder="e.g. Douglas-Charles Airport">
-<label>Full name</label>
-<input id="name" required>
-<label>Phone / WhatsApp</label>
-<input id="phone" type="tel" required>
-<label>Email</label>
-<input id="email" type="email" required>
-<label>Payment preference</label>
-<select id="payment">
-<option value="25">25% deposit</option>
-<option value="100">Full payment</option>
-</select>
+<label for="start">Pickup date</label><input id="start" type="date" required>
+<label for="end">Return date</label><input id="end" type="date" required>
+<label for="location">Pickup location</label><input id="location" required maxlength="250" placeholder="e.g. Douglas-Charles Airport">
+<label for="name">Full name</label><input id="name" required maxlength="120">
+<label for="phone">Phone / WhatsApp</label><input id="phone" type="tel" required maxlength="40">
+<label for="email">Email</label><input id="email" type="email" required maxlength="200">
+<label for="payment">Payment preference</label>
+<select id="payment"><option value="25">25% deposit</option><option value="100">Full payment</option></select>
 <div class="summary" id="summary">Choose a vehicle and rental dates to see your total.</div>
-<button type="submit">Prepare Booking Request</button>
+<button type="submit" id="submitBtn">Submit Booking Request</button>
+<p id="result" role="status" aria-live="polite"></p>
 </form>
-<p><small>Booking request only. Availability and payment must be confirmed by Access Rides. No payment is collected on this page.</small></p>
+<p><small>Booking request only. Availability and payment must be confirmed by Access Rides. No payment is collected on this page. Your contact details are submitted to Access Rides to process your request.</small></p>
 </main>
 <script>
-const ids=["vehicle","start","end","payment"];
-ids.forEach(id=>document.getElementById(id).addEventListener("change",calculate));
+const firebaseConfig={
+apiKey:'AIzaSyD5eLq0stOSjkB5ho75dkaD5F-eman6r6Q',
+authDomain:'access-rides.firebaseapp.com',
+databaseURL:'https://access-rides-default-rtdb.firebaseio.com',
+projectId:'access-rides',
+storageBucket:'access-rides.firebasestorage.app',
+messagingSenderId:'791788610379',
+appId:'1:791788610379:web:bcd5e91d770a886fe4bece',
+measurementId:'G-SJ510R4Z77'
+};
+const $=id=>document.getElementById(id);
+let auth,db,ready=false;
+function showResult(message,isError=false){$('result').textContent=message;$('result').className=isError?'error':'success';}
 function calculate(){
-const rate=Number(document.getElementById("vehicle").value);
-const start=document.getElementById("start").value;
-const end=document.getElementById("end").value;
-const summary=document.getElementById("summary");
-if(!rate||!start||!end){summary.textContent="Choose a vehicle and rental dates to see your total.";return null;}
+const rate=Number($('vehicle').value),start=$('start').value,end=$('end').value;
+if(!rate||!start||!end){$('summary').textContent='Choose a vehicle and rental dates to see your total.';return null;}
 const days=Math.round((Date.parse(end)-Date.parse(start))/86400000);
-if(days<1){summary.textContent="Return date must be after pickup date.";return null;}
-const total=rate*days;
-const percent=Number(document.getElementById("payment").value);
-const due=total*percent/100;
-summary.innerHTML="<strong>"+days+" day(s) × EC$"+rate+"</strong><p>Rental total: EC$"+total.toFixed(2)+"</p><p>"+percent+"% payment: EC$"+due.toFixed(2)+"</p><p>Balance: EC$"+(total-due).toFixed(2)+"</p>";
-return {days,rate,total,due};
+if(!Number.isFinite(days)||days<1){$('summary').textContent='Return date must be after pickup date.';return null;}
+const total=rate*days,percent=Number($('payment').value),due=total*percent/100;
+$('summary').innerHTML='<strong>'+days+' day(s) × EC$'+rate+'</strong><p>Rental total: EC$'+total.toFixed(2)+'</p><p>'+percent+'% payment: EC$'+due.toFixed(2)+'</p><p>Balance: EC$'+(total-due).toFixed(2)+'</p>';
+return {days,rate,total,due,percent};
 }
-document.getElementById("booking").addEventListener("submit",function(e){
-e.preventDefault();
-const result=calculate();
-if(!result)return;
-const v=document.getElementById("vehicle");
-const get=id=>document.getElementById(id).value;
-const message="ACCESS RIDES RENTAL REQUEST\n"+
-"Vehicle: "+v.options[v.selectedIndex].text+"\n"+
-"Pickup: "+get("start")+"\nReturn: "+get("end")+"\n"+
-"Location: "+get("location")+"\n"+
-"Name: "+get("name")+"\nPhone: "+get("phone")+"\n"+
-"Email: "+get("email")+"\n"+
-"Rental total: EC$"+result.total.toFixed(2)+"\n"+
-"Payment preference: "+get("payment")+"%\n"+
-"Estimated amount due: EC$"+result.due.toFixed(2);
-window.location.href="mailto:d_julez@live.com?subject="+
-encodeURIComponent("Access Rides Rental Request")+
-"&body="+encodeURIComponent(message);
+['vehicle','start','end','payment'].forEach(id=>$(id).addEventListener('change',calculate));
+const today=new Date();const localToday=[today.getFullYear(),String(today.getMonth()+1).padStart(2,'0'),String(today.getDate()).padStart(2,'0')].join('-');
+$('start').min=localToday;$('end').min=localToday;
+$('start').addEventListener('change',()=>{$('end').min=$('start').value||localToday;});
+function loadScript(url){return new Promise((resolve,reject)=>{const s=document.createElement('script');s.src=url;s.onload=resolve;s.onerror=()=>reject(new Error('Could not load Firebase'));document.head.appendChild(s);});}
+async function initialize(){
+try{
+const base='https://www.gstatic.com/firebasejs/10.14.1/';
+await loadScript(base+'firebase-app-compat.js');
+await loadScript(base+'firebase-auth-compat.js');
+await loadScript(base+'firebase-database-compat.js');
+if(!firebase.apps.length)firebase.initializeApp(firebaseConfig);
+auth=firebase.auth();db=firebase.database();ready=true;
+}catch(error){showResult('Booking connection unavailable. Please try again later. '+error.message,true);}
+}
+$('booking').addEventListener('submit',async e=>{
+e.preventDefault();const calc=calculate();if(!calc){showResult('Please choose valid rental dates.',true);return;}
+if($('start').value<localToday){showResult('Pickup date cannot be in the past.',true);return;}
+if(!ready){showResult('Booking service is still loading. Please try again shortly.',true);return;}
+const btn=$('submitBtn');btn.disabled=true;showResult('Submitting your request...');
+try{
+let user=auth.currentUser;
+// The customer page must not sign an already signed-in owner out.
+if(!user)user=(await auth.signInAnonymously()).user;
+if(user.isAnonymous!==true){throw new Error('This browser is signed in to a staff account. Please use a private/incognito tab to submit a customer request.');}
+const vehicle=$('vehicle');
+const booking={
+vehicle:vehicle.options[vehicle.selectedIndex].text,
+pickupDate:$('start').value,
+returnDate:$('end').value,
+pickupLocation:$('location').value.trim(),
+fullName:$('name').value.trim(),
+phone:$('phone').value.trim(),
+email:$('email').value.trim(),
+total:calc.total,
+status:'Pending',
+amountPaid:0,
+createdAt:firebase.database.ServerValue.TIMESTAMP,
+customerUid:user.uid,
+rentalDays:calc.days,
+dailyRate:calc.rate,
+paymentPreference:calc.percent+'%'
+};
+if(!booking.pickupLocation||!booking.fullName||!booking.phone||!booking.email){throw new Error('Please complete all contact details.');}
+const newBooking=db.ref('bookings').push();
+await newBooking.set(booking);
+showResult('Booking request submitted successfully! Reference: '+newBooking.key+'. Access Rides will contact you to confirm availability and payment.');
+$('booking').reset();$('summary').textContent='Choose a vehicle and rental dates to see your total.';
+}catch(error){showResult('Booking was not submitted: '+error.message,true);}
+finally{btn.disabled=false;}
 });
+initialize();
 </script>
 </body>
 </html>
