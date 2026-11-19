@@ -198,7 +198,30 @@ return;
 saveBtn.disabled=true;
 result.textContent="Saving...";
 try{
-await db.ref("bookings/"+id).update({
+
+if(select.value==="Approved"){
+const snapshot=await db.ref("bookings").once("value");
+const all=snapshot.val()||{};
+
+const vehicle=x=>String(x.vehicle||x.vehicleType||"").split("—")[0].trim().toLowerCase();
+
+const conflict=Object.entries(all).some(([key,x])=>
+key!==id &&
+x.status==="Approved" &&
+vehicle(x)===vehicle(b) &&
+x.pickupDate<=b.returnDate &&
+x.returnDate>=b.pickupDate
+);
+
+if(conflict){
+alert("DOUBLE BOOKING: This vehicle is already booked for these dates.");
+result.textContent="Booking conflict detected.";
+result.className="error";
+return;
+}
+}
+
+  await db.ref("bookings/"+id).update({
 status:select.value,
 amountPaid:amount
 });
