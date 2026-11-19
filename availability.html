@@ -1,0 +1,300 @@
+ 
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Access Rides | Availability</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f1f5f9;color:#102a43;font-family:Arial,sans-serif}
+header{background:#102a43;color:white;text-align:center;padding:25px 10px}
+main{max-width:850px;margin:20px auto;padding:12px}
+.card{background:white;padding:18px;border-radius:12px;margin-bottom:15px}
+input,select,button{padding:12px;font-size:16px;border-radius:7px}
+input,select{width:100%;border:1px solid #cbd5e1;margin:8px 0}
+button{background:#1166a0;color:white;border:0;cursor:pointer}
+.nav{display:flex;align-items:center;justify-content:space-between;margin:20px 0}
+.calendar{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.day{text-align:center;padding:12px 0;border-radius:5px;font-size:14px}
+.available{background:#dcfce7;color:#166534}
+.booked{background:#dc2626;color:white}
+.pending{background:#fbbf24;color:#422006}
+.conflict{background:#7e22ce;color:white}
+.legend{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px}
+.legend span{padding:7px;border-radius:5px;font-size:13px}
+.error{color:#b91c1c}
+#app{display:none}
+a{color:#1166a0}
+</style>
+</head>
+<body>
+<header>
+<h1>ACCESS RIDES</h1>
+<p>Vehicle Availability Calendar</p>
+<p>More than a ride...</p>
+</header>
+<main>
+<div class="card" id="login">
+<h2>Owner Sign In</h2>
+<form id="loginForm">
+<input id="email" type="email" placeholder="Owner email" required>
+<input id="password" type="password" placeholder="Password" required>
+<button type="submit">Sign In</button>
+</form>
+<p id="loginMsg">Connecting to Firebase...</p>
+</div>
+
+<div id="app">
+<div class="card">
+<a href="bookings.html">Back to Owner Bookings</a>
+<h2>Vehicle Availability</h2>
+<button id="logout">Sign Out</button>
+<p id="connection">Loading bookings...</p>
+<label for="vehicle">Select Vehicle</label>
+<select id="vehicle"></select>
+
+<div class="nav">
+<button id="prev">&lt;</button>
+<strong id="month"></strong>
+<button id="next">&gt;</button>
+</div>
+
+<div class="calendar" id="calendar"></div>
+
+<div class="legend">
+<span class="available">Available</span>
+<span class="booked">Booked</span>
+<span class="pending">Pending</span>
+<span class="conflict">Overlapping bookings</span>
+</div>
+<p>Return dates are reserved conservatively until pickup and return times are supported.</p>
+</div>
+
+<div class="card">
+<h2>Date Details</h2>
+<div id="details">Select a calendar date.</div>
+</div>
+</div>
+</main>
+
+<script>
+const firebaseConfig={
+apiKey:"AIzaSyD5eLq0stOSjkB5ho75dkaD5F-eman6r6Q",
+authDomain:"access-rides.firebaseapp.com",
+databaseURL:"https://access-rides-default-rtdb.firebaseio.com",
+projectId:"access-rides",
+storageBucket:"access-rides.firebasestorage.app",
+messagingSenderId:"791788610379",
+appId:"1:791788610379:web:bcd5e91d770a886fe4bece"
+};
+
+const OWNER_UID="TMw5M7XKZsNwRivDFCq1BKG6bcg2";
+const $=id=>document.getElementById(id);
+let auth,db,bookingRef,listener;
+let bookings=[];
+let loaded=false;
+let current=new Date();
+let year=current.getFullYear();
+let month=current.getMonth();
+
+function vehicleName(b){
+return String(b.vehicle||b.vehicleType||"Unknown vehicle")
+.replace(/\s*[—–-]\s*EC\$.*$/i,"").trim();
+}
+
+function dateString(y,m,d){
+return y+"-"+String(m+1).padStart(2,"0")+"-"+String(d).padStart(2,"0");
+}
+
+function active(b){
+return ["approved","pending"].includes(
+String(b.status||"Pending").toLowerCase());
+}
+
+function matches(date){
+return bookings.filter(b=>
+vehicleName(b)===$("vehicle").value &&
+active(b) &&
+b.pickupDate && b.returnDate &&
+date>=b.pickupDate &&
+date<=b.returnDate);
+}
+
+function updateVehicles(){
+const old=$("vehicle").value;
+const vehicles=[...new Set([
+"Pickup Truck (Frontier TL813)",
+...bookings.map(vehicleName)
+])];
+$("vehicle").replaceChildren();
+vehicles.forEach(v=>{
+const option=document.createElement("option");
+option.value=v;
+option.textContent=v;
+$("vehicle").appendChild(option);
+});
+if(vehicles.includes(old))$("vehicle").value=old;
+}
+
+function showDetails(date){
+const root=$("details");
+root.replaceChildren();
+const heading=document.createElement("h3");
+heading.textContent=date;
+root.appendChild(heading);
+const records=matches(date);
+if(!records.length){
+root.append("No active rental bookings found.");
+return;
+}
+records.forEach(b=>{
+const p=document.createElement("p");
+p.textContent=
+(b.fullName||b.name||b.customerName||"Customer")+
+" | "+(b.status||"Pending")+
+" | "+b.pickupDate+" to "+b.returnDate;
+root.appendChild(p);
+});
+}
+
+function render(){
+const root=$("calendar");
+root.replaceChildren();
+$("details").textContent="Select a calendar date.";
+$("month").textContent=new Date(year,month,1)
+.toLocaleDateString("en-US",{month:"long",year:"numeric"});
+if(!loaded)return;
+
+["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].forEach(d=>{
+const cell=document.createElement("div");
+cell.className="day";
+cell.textContent=d;
+root.appendChild(cell);
+});
+
+const first=new Date(year,month,1).getDay();
+const days=new Date(year,month+1,0).getDate();
+
+for(let i=0;i<first;i++){
+root.appendChild(document.createElement("div"));
+}
+
+for(let d=1;d<=days;d++){
+const date=dateString(year,month,d);
+const records=matches(date);
+const approved=records.filter(b=>
+String(b.status).toLowerCase()==="approved").length;
+
+const cell=document.createElement("button");
+cell.className="day "+
+(approved>1?"conflict":
+approved?"booked":
+records.length?"pending":"available");
+cell.textContent=d;
+cell.onclick=()=>showDetails(date);
+root.appendChild(cell);
+}
+}
+
+function move(n){
+const next=new Date(year,month+n,1);
+year=next.getFullYear();
+month=next.getMonth();
+render();
+}
+
+$("prev").onclick=()=>move(-1);
+$("next").onclick=()=>move(1);
+$("vehicle").onchange=render;
+
+$("loginForm").onsubmit=async e=>{
+e.preventDefault();
+if(!auth){
+$("loginMsg").textContent="Firebase is not ready.";
+return;
+}
+$("loginMsg").textContent="Signing in...";
+try{
+await auth.signInWithEmailAndPassword(
+$("email").value.trim(),$("password").value);
+$("password").value="";
+}catch(e){
+$("loginMsg").textContent=e.message;
+}
+};
+
+$("logout").onclick=()=>auth.signOut();
+
+function loadScript(src){
+return new Promise((resolve,reject)=>{
+const s=document.createElement("script");
+s.src=src;
+s.onload=resolve;
+s.onerror=reject;
+document.head.appendChild(s);
+});
+}
+
+async function start(){
+try{
+const base="https://www.gstatic.com/firebasejs/10.14.1/";
+await loadScript(base+"firebase-app-compat.js");
+await loadScript(base+"firebase-auth-compat.js");
+await loadScript(base+"firebase-database-compat.js");
+firebase.initializeApp(firebaseConfig);
+auth=firebase.auth();
+db=firebase.database();
+
+$("loginMsg").textContent="Ready to sign in.";
+
+auth.onAuthStateChanged(async user=>{
+if(bookingRef&&listener){
+bookingRef.off("value",listener);
+}
+loaded=false;
+bookings=[];
+$("calendar").replaceChildren();
+$("details").textContent="";
+$("vehicle").replaceChildren();
+$("app").style.display="none";
+$("login").style.display="block";
+
+if(!user)return;
+if(user.uid!==OWNER_UID){
+await auth.signOut();
+$("loginMsg").textContent="Owner access only.";
+return;
+}
+
+$("login").style.display="none";
+$("app").style.display="block";
+$("connection").textContent="Loading bookings...";
+
+bookingRef=db.ref("bookings");
+listener=snap=>{
+bookings=Object.values(snap.val()||{})
+.filter(b=>b&&typeof b==="object");
+loaded=true;
+updateVehicles();
+render();
+$("connection").textContent="Live booking calendar connected.";
+};
+
+bookingRef.on("value",listener,error=>{
+loaded=false;
+bookings=[];
+$("calendar").replaceChildren();
+$("details").textContent="";
+$("connection").textContent="Unable to load bookings: "+error.message;
+});
+});
+
+}catch(e){
+$("loginMsg").textContent="Connection failed. Refresh the page.";
+}
+}
+start();
+</script>
+</body>
+</html>
