@@ -58,6 +58,10 @@ button:disabled{opacity:.5}
 <p><a href="rentals.html">Customer Rental Page</a></p>
 </div>
 <div class="card">
+<h2>Booking Summary</h2>
+<div id="bookingSummary">Loading summary...</div>
+</div>
+<div class="card">
 <h2>Rental Requests</h2>
 <p id="status" role="status">Loading bookings...</p>
 <div id="bookings"></div>
@@ -113,6 +117,47 @@ function renderBookings(raw){
 const root=$("bookings");
 root.replaceChildren();
 const entries=Object.entries(raw||{});
+
+const summary={Pending:0,Approved:0,Rejected:0,Completed:0};
+let rentalValue=0,received=0,outstanding=0;
+let bookingCount=0;
+
+for(const [,b] of entries){
+  if(!b||typeof b!=="object")continue;
+  bookingCount++;
+  const status=String(b.status||"Pending");
+  if(Object.prototype.hasOwnProperty.call(summary,status)){
+    summary[status]++;
+  }
+  const total=Number(b.total??b.rentalTotal);
+  const paid=Number(b.amountPaid??b.paid??0);
+  if(Number.isFinite(total)&&total>0){
+    rentalValue+=total;
+    if(Number.isFinite(paid)&&paid>=0){
+      received+=Math.min(paid,total);
+      outstanding+=Math.max(0,total-paid);
+    }else{
+      outstanding+=total;
+    }
+  }
+}
+const summaryEl=$("bookingSummary");
+summaryEl.replaceChildren();
+const summaryItems=[
+  ["Total Bookings",bookingCount],
+  ...Object.entries(summary),
+  ["Total Rental Value",money(rentalValue)],
+  ["Payments Received",money(received)],
+  ["Outstanding Balance",money(outstanding)]
+];
+for(const [label,value] of summaryItems){
+  const item=document.createElement("p");
+  const strong=document.createElement("strong");
+  strong.textContent=label+": ";
+  item.append(strong,document.createTextNode(String(value)));
+  summaryEl.appendChild(item);
+}
+
 $("status").textContent=entries.length
 ?entries.length+" booking record(s)"
 :"No bookings saved in Firebase yet.";
