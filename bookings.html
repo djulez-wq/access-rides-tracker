@@ -145,7 +145,8 @@ field("Email",b.email)+
 field("Payment Preference",b.paymentPreference)+
 field("Total",total==null?"—":money(total))+
 field("Amount Paid",money(paid))+
-field("Balance",balance);
+field("Balance",balance)+
+field("Payment Status",total==null||!Number.isFinite(Number(total))||Number(total)<=0?"Not Available":Number(paid)<=0?"Unpaid":Number(paid)>=Number(total)?"Paid in Full":"Partially Paid");
 card.appendChild(details);
 
 const actions=document.createElement("div");
