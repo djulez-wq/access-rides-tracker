@@ -201,6 +201,21 @@ button.disabled=true;
 fleetMessage("Saving vehicle...");
 
 try{
+// Prevent duplicate vehicle registrations
+const normalizeReg = value =>
+  String(value || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+
+const existingFleet = (await fleetRef().once("value")).val() || {};
+const duplicate = Object.entries(existingFleet).some(([key, vehicle]) =>
+  key !== id &&
+  normalizeReg(vehicle.registration) === normalizeReg(registration)
+);
+
+if(duplicate){
+  fleetMessage("This registration number already exists. Select Edit Vehicle to update it.");
+  return;
+}
+
 const record={name,registration,dailyRate,status};
 const target=id?fleetRef().child(id):fleetRef().push();
 const vehicleId=target.key;
