@@ -203,8 +203,20 @@ fleetMessage("Saving vehicle...");
 try{
 const record={name,registration,dailyRate,status};
 const target=id?fleetRef().child(id):fleetRef().push();
-await target.set(record);
-fleetMessage("Vehicle saved successfully.");
+const vehicleId=target.key;
+
+const publicRecord={
+  name:(name+" "+registration).trim(),
+  dailyRate,
+  status
+};
+
+const updates={};
+updates["rentalFleet/"+vehicleId]=record;
+updates["publicRentalFleet/"+vehicleId]=publicRecord;
+
+await db.ref().update(updates);
+fleetMessage("Vehicle saved and rental listing updated successfully.");
 clearFleetForm();
 }catch(error){
 fleetMessage("Save failed: "+error.message);
