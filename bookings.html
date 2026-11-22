@@ -62,6 +62,36 @@ button:disabled{opacity:.5}
 <div id="bookingSummary">Loading summary...</div>
 </div>
 <div class="card">
+<h2>Vehicle Availability Calendar</h2>
+
+<label for="calendarVehicle">Select Vehicle</label>
+<select id="calendarVehicle">
+<option>Small Car</option>
+<option>Sedan</option>
+<option>SUV</option>
+<option>Pickup Truck (Frontier TL813)</option>
+<option>Premium SUV / 4×4</option>
+</select>
+
+<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin:15px 0;">
+<button id="calendarPrev" type="button">Previous</button>
+<strong id="calendarMonth"></strong>
+<button id="calendarNext" type="button">Next</button>
+</div>
+
+<div id="availabilityCalendar"
+style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;">
+</div>
+
+<p style="font-size:13px;">
+🟢 No booking |
+🟡 Pending |
+🔴 Booked | ⚪ Completed
+</p>
+
+<p id="calendarConflicts"></p>
+</div>
+<div class="card">
 <h2>Rental Requests</h2>
 <div style="display:grid;gap:10px;margin-bottom:15px;">
 <label for="bookingSearch">Search Bookings</label>
@@ -129,7 +159,91 @@ return Number.isFinite(n)?"EC$"+n.toFixed(2):"—";
 
 let latestBookings={};
 
+let calendarDate=new Date();
+calendarDate.setDate(1);
+
+function renderAvailability(raw){
+  const root=$("availabilityCalendar");
+  root.replaceChildren();
+
+  const vehicle=$("calendarVehicle").value;
+  const year=calendarDate.getFullYear();
+  const month=calendarDate.getMonth();
+
+  $("calendarMonth").textContent=
+    calendarDate.toLocaleDateString("en-US",{
+      month:"long",year:"numeric"
+    });
+
+  const records=Object.values(raw||{}).filter(b=>
+    b && String(b.vehicle||b.vehicleType||"")
+    .split(" — ")[0].trim()===vehicle
+  );
+
+  function cell(text,bg){
+    const el=document.createElement("div");
+    el.textContent=text;
+    el.style.cssText="padding:10px 2px;text-align:center;border-radius:5px;font-size:12px;color:#111;background:"+bg;
+    root.appendChild(el);
+    return el;
+  }
+
+  ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"]
+    .forEach(d=>cell(d,"#e5e7eb"));
+
+  const first=new Date(year,month,1).getDay();
+  const days=new Date(year,month+1,0).getDate();
+
+  for(let i=0;i<first;i++)cell("","transparent");
+
+  let conflicts=0;
+
+  for(let day=1;day<=days;day++){
+    const date=year+"-"+String(month+1).padStart(2,"0")
+      +"-"+String(day).padStart(2,"0");
+
+    const matches=records.filter(b=>
+      b.pickupDate && b.returnDate &&
+      b.pickupDate<=date && b.returnDate>=date
+    );
+
+    const approved=matches.filter(b=>b.status==="Approved");
+    const pending=matches.filter(b=>b.status==="Pending");
+    const completed=matches.filter(b=>b.status==="Completed");
+
+    if(approved.length>1)conflicts++;
+
+    const bg=approved.length?"#fca5a5":
+      pending.length?"#fde68a":
+      completed.length?"#d1d5db":"#bbf7d0";
+
+    const el=cell(day,bg);
+    el.title=date+" | Approved: "+approved.length+
+      " | Pending: "+pending.length+
+      " | Completed: "+completed.length;
+  }
+
+  $("calendarConflicts").textContent=conflicts
+    ?"Warning: Overlapping approved bookings on "+conflicts+" day(s)."
+    :"No overlapping approved bookings detected this month.";
+}
+
+$("calendarVehicle").addEventListener("change",()=>{
+  renderAvailability(latestBookings);
+});
+
+$("calendarPrev").addEventListener("click",()=>{
+  calendarDate.setMonth(calendarDate.getMonth()-1);
+  renderAvailability(latestBookings);
+});
+
+$("calendarNext").addEventListener("click",()=>{
+  calendarDate.setMonth(calendarDate.getMonth()+1);
+  renderAvailability(latestBookings);
+});
+
 function renderBookings(raw){
+renderAvailability(raw);
 latestBookings=raw||{};
 const root=$("bookings");
 root.replaceChildren();
