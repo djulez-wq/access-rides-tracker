@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Access Rides | Vehicle Management</title>
+<style>
+body{font-family:Arial,sans-serif;background:#f3f5f8;margin:0;color:#172033}
+header{background:#12345a;color:white;padding:22px;text-align:center}
+main{max-width:900px;margin:25px auto;padding:15px}
+.card{background:white;padding:20px;border-radius:12px;margin-bottom:15px;box-shadow:0 2px 8px #0001}
+button{background:#12345a;color:white;border:0;padding:12px;border-radius:6px;cursor:pointer}
+input,select{width:100%;padding:10px;margin:7px 0 15px;box-sizing:border-box}
+label{font-weight:bold}
+a{color:#1456a0}
+</style>
+</head>
+<body>
+<header>
+<h1>Access Rides</h1>
+<p>Vehicle Management Dashboard</p>
+</header>
+<main>
+<div class="card" id="loginSection">
+<h2>Owner Sign In</h2>
+<form id="vehicleLoginForm">
+<label for="ownerEmail">Email</label>
+<input id="ownerEmail" type="email" required>
+<label for="ownerPassword">Password</label>
+<input id="ownerPassword" type="password" required>
+<button type="submit" id="vehicleLoginBtn">Sign In</button>
+</form>
+<p id="vehicleLoginMessage" role="status"></p>
+</div>
+<div id="vehicleOwnerContent" hidden>
+<div class="card">
+<h2>Add or Update Vehicle</h2>
+<form id="fleetForm">
+<input type="hidden" id="fleetId">
+
+<label for="fleetName">Vehicle Name</label>
+<input id="fleetName" placeholder="Example: Frontier" maxlength="120" required>
+
+<label for="fleetRegistration">Registration Number</label>
+<input id="fleetRegistration" placeholder="Example: TL813" maxlength="30" required>
+
+<label for="fleetRate">Daily Rental Price (EC$)</label>
+<input id="fleetRate" type="number" min="0" step="0.01" placeholder="225" required>
+
+<label for="fleetStatus">Vehicle Status</label>
+<select id="fleetStatus">
+<option value="Available">Available</option>
+<option value="Maintenance">Maintenance</option>
+<option value="Inactive">Inactive</option>
+</select>
+
+<button type="submit" id="fleetSaveBtn">Save Vehicle</button>
+<button type="button" id="fleetCancelBtn">Clear Form</button>
+</form>
+<p id="fleetMessage" role="status"></p>
+</div>
+
+<div class="card">
+<h2>Registered Rental Vehicles</h2>
+<div id="fleetList">Vehicle registry will appear here.</div>
+</div>
+
+
+<div class="card">
+<h2>Vehicle Registry</h2>
+<p>Manage individual rental vehicles, prices and availability.</p>
+<p id="vehicleStatus">Vehicle management setup in progress.</p>
+</div>
+<div class="card">
+<h2>Initial Vehicle</h2>
+<p><strong>Vehicle:</strong> Frontier</p>
+<p><strong>Registration:</strong> TL813</p>
+<p><strong>Daily rate:</strong> EC$225</p>
+<p>This is a setup preview, not a live database record.</p>
+</div>
+<div class="card">
+<h2>Fleet Expansion</h2>
+<p>Four additional vehicle slots will be available.</p>
+</div>
+<p><a href="bookings.html">Return to Owner Booking Dashboard</a></p>
+</div>
+</main>
+<script>
+const firebaseConfig={
+apiKey:"AIzaSyD5eLq0stOSjkB5ho75dkaD5F-eman6r6Q",
+authDomain:"access-rides.firebaseapp.com",
+databaseURL:"https://access-rides-default-rtdb.firebaseio.com",
+projectId:"access-rides",
+storageBucket:"access-rides.firebasestorage.app",
+messagingSenderId:"791788610379",
+appId:"1:791788610379:web:bcd5e91d770a886fe4bece"
+};
+
+const OWNER_UID="TMw5M7XKZsNwRivDFCq1BKG6bcg2";
+const $=id=>document.getElementById(id);
+let auth,db;
+
+function loginMessage(text){
+$("vehicleLoginMessage").textContent=text;
+}
+
+$("vehicleLoginForm").addEventListener("submit",async e=>{
+e.preventDefault();
+const btn=$("vehicleLoginBtn");
+btn.disabled=true;
+loginMessage("Signing in...");
+try{
+await auth.signInWithEmailAndPassword(
+$("ownerEmail").value.trim(),
+$("ownerPassword").value
+);
+}catch(error){
+loginMessage("Sign in failed: "+error.message);
+}finally{
+btn.disabled=false;
+}
+});
+
+async function loadVehicleFirebase(){
+try{
+const base="https://www.gstatic.com/firebasejs/10.14.1/";
+for(const file of [
+"firebase-app-compat.js",
+"firebase-auth-compat.js",
+"firebase-database-compat.js"
+]){
+await new Promise((resolve,reject)=>{
+const script=document.createElement("script");
+script.src=base+file;
+script.onload=resolve;
+script.onerror=reject;
+document.head.appendChild(script);
+});
+}
+
+firebase.initializeApp(firebaseConfig);
+auth=firebase.auth();
+db=firebase.database();
+
+auth.onAuthStateChanged(async user=>{
+if(user && user.uid===OWNER_UID){
+$("loginSection").hidden=true;
+$("vehicleOwnerContent").hidden=false;
+startFleetRegistry();
+}else{
+$("loginSection").hidden=false;
+$("vehicleOwnerContent").hidden=true;
+if(user){
+loginMessage("This account is not authorized.");
+await auth.signOut();
+}
+}
+});
+}catch(error){
+loginMessage("Firebase connection failed: "+error.message);
+}
+}
+
+
+const fleetRef=()=>db.ref("rentalFleet");
+
+function fleetMessage(text){
+$("fleetMessage").textContent=text;
+}
+
+function clearFleetForm(){
+$("fleetForm").reset();
+$("fleetId").value="";
+$("fleetSaveBtn").textContent="Save Vehicle";
+}
+
+$("fleetCancelBtn").addEventListener("click",clearFleetForm);
+
+$("fleetForm").addEventListener("submit",async event=>{
+event.preventDefault();
+
+if(!auth || !auth.currentUser || auth.currentUser.uid!==OWNER_UID){
+fleetMessage("Owner sign-in required.");
+return;
+}
+
+const name=$("fleetName").value.trim();
+const registration=$("fleetRegistration").value.trim();
+const dailyRate=Number($("fleetRate").value);
+const status=$("fleetStatus").value;
+const id=$("fleetId").value;
+
+if(!name || !registration || !Number.isFinite(dailyRate) ||
+dailyRate<0 || !["Available","Maintenance","Inactive"].includes(status)){
+fleetMessage("Please enter valid vehicle details.");
+return;
+}
+
+const button=$("fleetSaveBtn");
+button.disabled=true;
+fleetMessage("Saving vehicle...");
+
+try{
+const record={name,registration,dailyRate,status};
+const target=id?fleetRef().child(id):fleetRef().push();
+await target.set(record);
+fleetMessage("Vehicle saved successfully.");
+clearFleetForm();
+}catch(error){
+fleetMessage("Save failed: "+error.message);
+}finally{
+button.disabled=false;
+}
+});
+
+function startFleetRegistry(){
+fleetRef().on("value",snapshot=>{
+const list=$("fleetList");
+list.replaceChildren();
+
+if(!snapshot.exists()){
+list.textContent="No vehicles registered yet.";
+return;
+}
+
+snapshot.forEach(child=>{
+const v=child.val();
+const card=document.createElement("div");
+card.className="card";
+
+const heading=document.createElement("h3");
+heading.textContent=v.name+" — "+v.registration;
+
+const details=document.createElement("p");
+details.textContent="EC$"+Number(v.dailyRate).toFixed(2)+
+" per day | "+v.status;
+
+const edit=document.createElement("button");
+edit.type="button";
+edit.textContent="Edit Vehicle";
+edit.addEventListener("click",()=>{
+$("fleetId").value=child.key;
+$("fleetName").value=v.name;
+$("fleetRegistration").value=v.registration;
+$("fleetRate").value=v.dailyRate;
+$("fleetStatus").value=v.status;
+$("fleetSaveBtn").textContent="Update Vehicle";
+window.scrollTo(0,0);
+});
+
+card.append(heading,details,edit);
+list.appendChild(card);
+});
+},error=>fleetMessage("Loading failed: "+error.message));
+}
+
+loadVehicleFirebase();
+</script>
+</body>
+</html>
