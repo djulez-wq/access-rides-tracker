@@ -63,6 +63,20 @@ button:disabled{opacity:.5}
 </div>
 <div class="card">
 <h2>Rental Requests</h2>
+<div style="display:grid;gap:10px;margin-bottom:15px;">
+<label for="bookingSearch">Search Bookings</label>
+<input id="bookingSearch" type="search"
+placeholder="Customer name, phone or vehicle">
+<label for="bookingFilter">Filter by Status</label>
+<select id="bookingFilter">
+<option value="All">All Bookings</option>
+<option value="Pending">Pending</option>
+<option value="Approved">Approved</option>
+<option value="Rejected">Rejected</option>
+<option value="Completed">Completed</option>
+</select>
+</div>
+
 <p id="status" role="status">Loading bookings...</p>
 <div id="bookings"></div>
 </div>
@@ -113,7 +127,10 @@ const n=Number(value);
 return Number.isFinite(n)?"EC$"+n.toFixed(2):"—";
 }
 
+let latestBookings={};
+
 function renderBookings(raw){
+latestBookings=raw||{};
 const root=$("bookings");
 root.replaceChildren();
 const entries=Object.entries(raw||{});
@@ -162,7 +179,25 @@ $("status").textContent=entries.length
 ?entries.length+" booking record(s)"
 :"No bookings saved in Firebase yet.";
 
-for(const [id,b] of entries){
+const search=$("bookingSearch").value.trim().toLowerCase();
+const filter=$("bookingFilter").value;
+
+const filteredEntries=entries.filter(([id,b])=>{
+  if(!b||typeof b!=="object")return false;
+  const status=String(b.status||"Pending");
+  const text=[
+    b.fullName,b.name,b.customerName,
+    b.phone,b.whatsapp,b.vehicle,b.vehicleType
+  ].filter(Boolean).join(" ").toLowerCase();
+
+  return (filter==="All"||status===filter)
+    && text.includes(search);
+});
+
+$("status").textContent=filteredEntries.length+
+" of "+bookingCount+" booking(s) displayed";
+
+for(const [id,b] of filteredEntries){
 if(!b||typeof b!=="object")continue;
 
 const card=document.createElement("article");
@@ -321,6 +356,14 @@ card.appendChild(waBtn);
   root.appendChild(card);
 }
 }
+
+$("bookingSearch").addEventListener("input",()=>{
+  renderBookings(latestBookings);
+});
+
+$("bookingFilter").addEventListener("change",()=>{
+  renderBookings(latestBookings);
+});
 
 function startDashboard(user){
 $("loginPanel").style.display="none";
