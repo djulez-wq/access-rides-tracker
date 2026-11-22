@@ -394,32 +394,53 @@ saveBtn.disabled=true;
 result.textContent="Saving...";
 try{
 
-if(select.value==="Approved"){
-const snapshot=await db.ref("bookings").once("value");
-const all=snapshot.val()||{};
+const requestedStatus=select.value;
+const vehicle=x=>String(x.vehicle||x.vehicleType||"")
+.split("—")[0].trim().toLowerCase();
 
-const vehicle=x=>String(x.vehicle||x.vehicleType||"").split("—")[0].trim().toLowerCase();
+const bookingRef=db.ref("bookings");
 
-const conflict=Object.entries(all).some(([key,x])=>
-key!==id &&
-x.status==="Approved" &&
-vehicle(x)===vehicle(b) &&
-x.pickupDate<=b.returnDate &&
-x.returnDate>=b.pickupDate
-);
+await bookingRef.once("value");
 
-if(conflict){
-alert("DOUBLE BOOKING: This vehicle is already booked for these dates.");
-result.textContent="Booking conflict detected.";
-result.className="error";
-return;
+const transaction=await bookingRef.transaction(all=>{
+  if(!all || !all[id])return;
+
+  const current=all[id];
+
+  if(requestedStatus==="Approved"){
+    if(!vehicle(current) ||
+       !current.pickupDate ||
+       !current.returnDate ||
+       current.pickupDate>current.returnDate)return;
+
+    const conflict=Object.entries(all).some(([key,x])=>
+      key!==id &&
+      x &&
+      x.status==="Approved" &&
+      vehicle(x)===vehicle(current) &&
+      x.pickupDate<=current.returnDate &&
+      x.returnDate>=current.pickupDate
+    );
+
+    if(conflict)return;
+  }
+
+  all[id]={
+    ...current,
+    status:requestedStatus,
+    amountPaid:amount
+  };
+
+  return all;
+},undefined,false);
+
+if(!transaction.committed){
+  result.textContent="Save blocked: booking conflict or invalid reservation.";
+  result.className="error";
+  alert("Booking could not be saved. Check vehicle availability and reservation details.");
+  return;
 }
-}
 
-  await db.ref("bookings/"+id).update({
-status:select.value,
-amountPaid:amount
-});
 result.textContent="Changes saved successfully.";
 result.className="success";
 }catch(error){
