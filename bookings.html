@@ -162,6 +162,18 @@ let latestBookings={};
 let calendarDate=new Date();
 calendarDate.setDate(1);
 
+function normalizeRentalVehicle(value){
+  const name=String(value||"")
+    .split("—")[0].trim().toLowerCase();
+
+  if(name==="pickup truck (frontier tl813)" ||
+     name==="frontier tl813"){
+    return "frontier tl813";
+  }
+
+  return name;
+}
+
 function renderAvailability(raw){
   const root=$("availabilityCalendar");
   root.replaceChildren();
@@ -176,8 +188,8 @@ function renderAvailability(raw){
     });
 
   const records=Object.values(raw||{}).filter(b=>
-    b && String(b.vehicle||b.vehicleType||"")
-    .split(" — ")[0].trim()===vehicle
+    b && normalizeRentalVehicle(b.vehicle||b.vehicleType)===
+    normalizeRentalVehicle(vehicle)
   );
 
   function cell(text,bg){
@@ -395,8 +407,7 @@ result.textContent="Saving...";
 try{
 
 const requestedStatus=select.value;
-const vehicle=x=>String(x.vehicle||x.vehicleType||"")
-.split("—")[0].trim().toLowerCase();
+const vehicle=x=>normalizeRentalVehicle(x.vehicle||x.vehicleType);
 
 const bookingRef=db.ref("bookings");
 
