@@ -408,6 +408,14 @@ try{
 
 const requestedStatus=select.value;
 const vehicle=x=>normalizeRentalVehicle(x.vehicle||x.vehicleType);
+const sameVehicle=(a,b)=>{
+  if(a.vehicleId && b.vehicleId){
+    return a.vehicleId===b.vehicleId;
+  }
+  const nameA=vehicle(a);
+  const nameB=vehicle(b);
+  return !!nameA && nameA===nameB;
+};
 
 const bookingRef=db.ref("bookings");
 
@@ -428,7 +436,7 @@ const transaction=await bookingRef.transaction(all=>{
       key!==id &&
       x &&
       x.status==="Approved" &&
-      vehicle(x)===vehicle(current) &&
+      sameVehicle(x,current) &&
       x.pickupDate<=current.returnDate &&
       x.returnDate>=current.pickupDate
     );

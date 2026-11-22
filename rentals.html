@@ -23,13 +23,8 @@ small{color:#526272}#result{margin-top:15px;overflow-wrap:anywhere}.error{color:
 <p>Choose your vehicle and dates to see the estimated rental cost.</p>
 <form id="booking">
 <label for="vehicle">Vehicle</label>
-<select id="vehicle" required>
-<option value="">Choose a vehicle</option>
-<option value="150">Small Car — EC$150/day</option>
-<option value="175">Sedan — EC$175/day</option>
-<option value="200">SUV — EC$200/day</option>
-<option value="225">Pickup Truck (Frontier TL813) — EC$225/day</option>
-<option value="250">Premium SUV / 4×4 — EC$250/day</option>
+<select id="vehicle" required disabled>
+<option value="">Loading available vehicles...</option>
 </select>
 <label for="start">Pickup date</label><input id="start" type="date" required>
 <label for="end">Return date</label><input id="end" type="date" required>
@@ -81,6 +76,29 @@ await loadScript(base+'firebase-auth-compat.js');
 await loadScript(base+'firebase-database-compat.js');
 if(!firebase.apps.length)firebase.initializeApp(firebaseConfig);
 auth=firebase.auth();db=firebase.database();ready=true;
+db.ref('publicRentalFleet').on('value',snapshot=>{
+ const select=$('vehicle');
+ const previous=select.options[select.selectedIndex]?.dataset.vehicleId||'';
+ select.innerHTML='<option value="">Choose a vehicle</option>';
+ let count=0;
+ snapshot.forEach(child=>{
+  const v=child.val();
+  if(!v||v.status!=='Available'||!Number.isFinite(Number(v.dailyRate))||Number(v.dailyRate)<=0)return;
+  const option=document.createElement('option');
+  option.value=String(v.dailyRate);
+  option.textContent=v.name+' — EC$'+v.dailyRate+'/day';
+  option.dataset.vehicleId=child.key;
+  select.appendChild(option);
+  if(child.key===previous)option.selected=true;
+  count++;
+ });
+ select.disabled=count===0;
+ if(!count)select.options[0].textContent='No rental vehicles currently available';
+ calculate();
+},error=>{
+ $('vehicle').disabled=true;
+ showResult('Unable to load available vehicles: '+error.message,true);
+});
 }catch(error){showResult('Booking connection unavailable. Please try again later. '+error.message,true);}
 }
 $('booking').addEventListener('submit',async e=>{
@@ -94,8 +112,12 @@ let user=auth.currentUser;
 if(!user)user=(await auth.signInAnonymously()).user;
 if(user.isAnonymous!==true){throw new Error('This browser is signed in to a staff account. Please use a private/incognito tab to submit a customer request.');}
 const vehicle=$('vehicle');
+const selectedVehicle=vehicle.options[vehicle.selectedIndex];
+const vehicleId=selectedVehicle?.dataset.vehicleId;
+if(!vehicleId)throw new Error('Please select an available vehicle.');
 const booking={
-vehicle:vehicle.options[vehicle.selectedIndex].text,
+vehicleId:vehicleId,
+vehicle:selectedVehicle.text,
 pickupDate:$('start').value,
 returnDate:$('end').value,
 pickupLocation:$('location').value.trim(),
