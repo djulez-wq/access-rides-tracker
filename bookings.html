@@ -90,6 +90,12 @@ button:disabled{opacity:.5}
 <h2>Booking Summary</h2>
 <div id="bookingSummary">Loading summary...</div>
 </div>
+
+<div class="card">
+<h2>Vehicle Revenue Report</h2>
+<p>Rental revenue by vehicle, based on selected reporting dates.</p>
+<div id="vehicleRevenueReport">Loading vehicle revenue...</div>
+</div>
 <div class="card">
 <h2>Vehicle Availability Calendar</h2>
 
@@ -319,6 +325,9 @@ const summary={Pending:0,Approved:0,Rejected:0,Completed:0};
 let rentalValue=0,received=0,outstanding=0;
 let bookingCount=0;
 
+// Vehicle-by-vehicle rental revenue totals
+const vehicleRevenue={};
+
 for(const [,b] of entries){
   if(!b||typeof b!=="object")continue;
   bookingCount++;
@@ -340,16 +349,36 @@ for(const [,b] of entries){
 
   if(!matchesFinancialDate||!matchesReportMonth)continue;
 
+  const vehicle=normalizeRentalVehicle(b.vehicle||b.vehicleType)
+    ||"unassigned";
+
+  if(!Object.prototype.hasOwnProperty.call(vehicleRevenue,vehicle)){
+    vehicleRevenue[vehicle]={
+      bookings:0,
+      rentalValue:0,
+      received:0,
+      outstanding:0
+    };
+  }
+
+  const vehicleTotals=vehicleRevenue[vehicle];
+  vehicleTotals.bookings++;
+
   const total=Number(b.total??b.rentalTotal);
   const paid=Number(b.amountPaid??b.paid??0);
+
   if(Number.isFinite(total)&&total>0){
+    const payment=Number.isFinite(paid)&&paid>=0
+      ?Math.min(paid,total):0;
+    const balance=Math.max(0,total-payment);
+
     rentalValue+=total;
-    if(Number.isFinite(paid)&&paid>=0){
-      received+=Math.min(paid,total);
-      outstanding+=Math.max(0,total-paid);
-    }else{
-      outstanding+=total;
-    }
+    received+=payment;
+    outstanding+=balance;
+
+    vehicleTotals.rentalValue+=total;
+    vehicleTotals.received+=payment;
+    vehicleTotals.outstanding+=balance;
   }
 }
 const summaryEl=$("bookingSummary");
@@ -367,6 +396,45 @@ for(const [label,value] of summaryItems){
   strong.textContent=label+": ";
   item.append(strong,document.createTextNode(String(value)));
   summaryEl.appendChild(item);
+}
+
+// Display vehicle-by-vehicle rental revenue
+const vehicleReport=$("vehicleRevenueReport");
+vehicleReport.replaceChildren();
+
+const vehicleEntries=Object.entries(vehicleRevenue)
+  .sort(([a],[b])=>a.localeCompare(b));
+
+if(!vehicleEntries.length){
+  const message=document.createElement("p");
+  message.textContent="No vehicle bookings for the selected reporting period.";
+  vehicleReport.appendChild(message);
+}
+
+for(const [vehicle,totals] of vehicleEntries){
+  const section=document.createElement("div");
+  const heading=document.createElement("h3");
+  heading.textContent=vehicle==="unassigned"
+    ?"Unassigned Vehicle"
+    :vehicle.replace(/\b\w/g,c=>c.toUpperCase());
+  section.appendChild(heading);
+
+  const details=[
+    ["Total Bookings",totals.bookings],
+    ["Total Rental Value",money(totals.rentalValue)],
+    ["Payments Received",money(totals.received)],
+    ["Outstanding Balance",money(totals.outstanding)]
+  ];
+
+  for(const [label,value] of details){
+    const line=document.createElement("p");
+    const strong=document.createElement("strong");
+    strong.textContent=label+": ";
+    line.append(strong,document.createTextNode(String(value)));
+    section.appendChild(line);
+  }
+
+  vehicleReport.appendChild(section);
 }
 
 $("status").textContent=entries.length
