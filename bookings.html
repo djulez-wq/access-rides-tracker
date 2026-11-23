@@ -147,6 +147,9 @@ placeholder="Customer name, phone or vehicle">
 </div>
 </div>
 
+<button id="clearFilters" type="button" class="secondary">
+Clear Filters
+</button>
 <button id="exportBookings" type="button" class="secondary">
 Download Bookings CSV
 </button>
@@ -719,6 +722,15 @@ $("filterStart").addEventListener("change",()=>{
 });
 
 $("filterEnd").addEventListener("change",()=>{
+  renderBookings(latestBookings);
+});
+
+// Reset all booking filters
+$("clearFilters").addEventListener("click",()=>{
+  $("bookingSearch").value="";
+  $("bookingFilter").value="All";
+  $("filterStart").value="";
+  $("filterEnd").value="";
   renderBookings(latestBookings);
 });
 
