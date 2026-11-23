@@ -321,6 +321,16 @@ for(const [,b] of entries){
   if(Object.prototype.hasOwnProperty.call(summary,status)){
     summary[status]++;
   }
+  const fromDate=$("filterStart").value;
+  const toDate=$("filterEnd").value;
+  const pickupDate=String(b.pickupDate||"").slice(0,10);
+  const matchesFinancialDate=(!fromDate&&!toDate) ||
+    (pickupDate &&
+      (!fromDate||pickupDate>=fromDate) &&
+      (!toDate||pickupDate<=toDate));
+
+  if(!matchesFinancialDate)continue;
+
   const total=Number(b.total??b.rentalTotal);
   const paid=Number(b.amountPaid??b.paid??0);
   if(Number.isFinite(total)&&total>0){
