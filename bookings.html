@@ -139,6 +139,9 @@ placeholder="Customer name, phone or vehicle">
 <button id="exportBookings" type="button" class="secondary">
 Download Bookings CSV
 </button>
+<button id="printBookings" type="button" class="secondary">
+Print Booking Report
+</button>
 <p id="status" role="status">Loading bookings...</p>
 <div id="bookings"></div>
 </div>
@@ -601,6 +604,92 @@ $("exportBookings").addEventListener("click",()=>{
   link.click();
   link.remove();
   setTimeout(()=>URL.revokeObjectURL(url),1000);
+});
+
+
+// Print Access Rides rental booking report
+$("printBookings").addEventListener("click",()=>{
+  const bookings=Object.entries(latestBookings||{})
+    .filter(([id,b])=>b&&typeof b==="object");
+
+  if(!bookings.length){
+    alert("No bookings available to print.");
+    return;
+  }
+
+  const report=window.open("","_blank");
+  if(!report){
+    alert("Please allow pop-ups to print the report.");
+    return;
+  }
+
+  const doc=report.document;
+  doc.title="Access Rides Booking Report";
+
+  const style=doc.createElement("style");
+  style.textContent=`
+    body{font-family:Arial,sans-serif;padding:24px;color:#222}
+    h1{color:#123b63;margin-bottom:5px}
+    p{color:#555}
+    table{width:100%;border-collapse:collapse;font-size:11px}
+    th,td{border:1px solid #ccc;padding:7px;text-align:left}
+    th{background:#e9f1fa}
+    @page{size:landscape;margin:12mm}
+  `;
+  doc.head.appendChild(style);
+
+  const heading=doc.createElement("h1");
+  heading.textContent="ACCESS RIDES";
+  doc.body.appendChild(heading);
+
+  const subtitle=doc.createElement("p");
+  subtitle.textContent="Rental Booking Report — "+new Date().toLocaleString();
+  doc.body.appendChild(subtitle);
+
+  const headers=[
+    "Customer","Phone","Vehicle","Pickup","Return",
+    "Status","Total EC$","Paid EC$","Balance EC$"
+  ];
+
+  const table=doc.createElement("table");
+  const thead=table.createTHead();
+  const headerRow=thead.insertRow();
+  headers.forEach(h=>{
+    const th=doc.createElement("th");
+    th.textContent=h;
+    headerRow.appendChild(th);
+  });
+
+  const tbody=table.createTBody();
+
+  bookings.forEach(([id,b])=>{
+    const total=Number(b.total??b.rentalTotal??0);
+    const paid=Number(b.amountPaid??b.paid??0);
+    const t=Number.isFinite(total)?total:0;
+    const a=Number.isFinite(paid)?paid:0;
+
+    const values=[
+      b.fullName||b.name||b.customerName||"",
+      b.phone||b.whatsapp||"",
+      b.vehicle||b.vehicleType||"",
+      b.pickupDate||"",
+      b.returnDate||"",
+      b.status||"Pending",
+      t.toFixed(2),
+      a.toFixed(2),
+      Math.max(0,t-a).toFixed(2)
+    ];
+
+    const row=tbody.insertRow();
+    values.forEach(value=>{
+      const cell=row.insertCell();
+      cell.textContent=String(value);
+    });
+  });
+
+  doc.body.appendChild(table);
+  report.focus();
+  report.print();
 });
 
 $("bookingSearch").addEventListener("input",()=>{
