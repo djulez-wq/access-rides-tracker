@@ -147,6 +147,11 @@ placeholder="Customer name, phone or vehicle">
 </div>
 </div>
 
+<div>
+<label for="reportMonth">Monthly Revenue Report</label>
+<input id="reportMonth" type="month">
+</div>
+
 <button id="clearFilters" type="button" class="secondary">
 Clear Filters
 </button>
@@ -329,7 +334,11 @@ for(const [,b] of entries){
       (!fromDate||pickupDate>=fromDate) &&
       (!toDate||pickupDate<=toDate));
 
-  if(!matchesFinancialDate)continue;
+  const reportMonth=$("reportMonth").value;
+  const matchesReportMonth=!reportMonth ||
+    (pickupDate && pickupDate.slice(0,7)===reportMonth);
+
+  if(!matchesFinancialDate||!matchesReportMonth)continue;
 
   const total=Number(b.total??b.rentalTotal);
   const paid=Number(b.amountPaid??b.paid??0);
@@ -735,12 +744,18 @@ $("filterEnd").addEventListener("change",()=>{
   renderBookings(latestBookings);
 });
 
+// Refresh financial summary when reporting month changes
+$("reportMonth").addEventListener("change",()=>{
+  renderBookings(latestBookings);
+});
+
 // Reset all booking filters
 $("clearFilters").addEventListener("click",()=>{
   $("bookingSearch").value="";
   $("bookingFilter").value="All";
   $("filterStart").value="";
   $("filterEnd").value="";
+  $("reportMonth").value="";
   renderBookings(latestBookings);
 });
 
