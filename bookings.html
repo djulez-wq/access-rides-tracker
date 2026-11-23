@@ -136,6 +136,17 @@ placeholder="Customer name, phone or vehicle">
 </select>
 </div>
 
+<div class="actions">
+<div>
+<label for="filterStart">From Date</label>
+<input id="filterStart" type="date">
+</div>
+<div>
+<label for="filterEnd">To Date</label>
+<input id="filterEnd" type="date">
+</div>
+</div>
+
 <button id="exportBookings" type="button" class="secondary">
 Download Bookings CSV
 </button>
@@ -351,8 +362,18 @@ const filteredEntries=entries.filter(([id,b])=>{
     b.phone,b.whatsapp,b.vehicle,b.vehicleType
   ].filter(Boolean).join(" ").toLowerCase();
 
+  const fromDate=$("filterStart").value;
+  const toDate=$("filterEnd").value;
+  const pickupDate=String(b.pickupDate||"").slice(0,10);
+
+  const matchesDate=(!fromDate&&!toDate) ||
+    (pickupDate &&
+      (!fromDate||pickupDate>=fromDate) &&
+      (!toDate||pickupDate<=toDate));
+
   return (filter==="All"||status===filter)
-    && text.includes(search);
+    && text.includes(search)
+    && matchesDate;
 });
 
 $("status").textContent=filteredEntries.length+
@@ -690,6 +711,15 @@ $("printBookings").addEventListener("click",()=>{
   doc.body.appendChild(table);
   report.focus();
   report.print();
+});
+
+// Refresh bookings when date filters change
+$("filterStart").addEventListener("change",()=>{
+  renderBookings(latestBookings);
+});
+
+$("filterEnd").addEventListener("change",()=>{
+  renderBookings(latestBookings);
 });
 
 $("bookingSearch").addEventListener("input",()=>{
