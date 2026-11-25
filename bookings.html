@@ -576,7 +576,17 @@ const transaction=await bookingRef.transaction(all=>{
     if(!vehicle(current) ||
        !current.pickupDate ||
        !current.returnDate ||
-       current.pickupDate>current.returnDate)return;
+       current.pickupDate>=current.returnDate)return;
+
+    const verifiedDays = (Date.parse(current.returnDate) -
+      Date.parse(current.pickupDate)) / 86400000;
+
+    if(!Number.isInteger(verifiedDays) ||
+       verifiedDays < 1 ||
+       current.rentalDays !== verifiedDays ||
+       !Number.isFinite(current.dailyRate) ||
+       current.dailyRate <= 0 ||
+       current.total !== verifiedDays * current.dailyRate)return;
 
     const conflict=Object.entries(all).some(([key,x])=>
       key!==id &&
