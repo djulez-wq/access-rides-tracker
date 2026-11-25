@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#07539b">
+<title>Access Rides & Airport Taxi Services</title>
+<link rel="icon" href="assets/icon-192.png">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<style>
+*{box-sizing:border-box}
+body{
+ margin:0;
+ font-family:Arial,sans-serif;
+ background:#edf4fa;
+ color:#12375a;
+}
+.app{
+ max-width:650px;
+ margin:auto;
+ min-height:100vh;
+ background:white;
+}
+header{
+ background:#07539b;
+ color:white;
+ padding:20px;
+ text-align:center;
+}
+header h2{margin:0;font-size:23px}
+.hero{
+ background:linear-gradient(#07539b,#0782c4);
+ color:white;
+ padding:20px;
+ text-align:center;
+}
+.logo{
+ width:100%;
+ max-width:340px;
+ border-radius:22px;
+}
+.hero h1{font-size:25px;margin-bottom:8px}
+.slogan{color:#ffdf35;font-style:italic}
+main{padding:18px}
+.services{
+ display:grid;
+ grid-template-columns:1fr 1fr;
+ gap:14px;
+}
+.service{
+ display:block;
+ background:#f1f7fc;
+ border:1px solid #dce8f4;
+ border-radius:16px;
+ padding:22px 8px;
+ text-align:center;
+ text-decoration:none;
+ color:#12375a;
+ box-shadow:0 3px 8px #0000000d;
+}
+.service span{display:block;font-size:35px;margin-bottom:12px}
+.service strong{display:block;font-size:17px}
+.service small{display:block;margin-top:7px;color:#53677b}
+.btn{
+ display:block;
+ padding:16px;
+ margin-top:15px;
+ border-radius:12px;
+ text-align:center;
+ text-decoration:none;
+ font-weight:bold;
+}
+.yellow{background:#ffda27;color:#12375a}
+.green{background:#15803d;color:white}
+.blue{background:#07539b;color:white}
+.contact{text-align:center;padding:18px 0;line-height:1.8}
+.contact a{color:#07539b}
+.staff{
+ border-top:1px solid #ddd;
+ text-align:center;
+ padding:20px 10px;
+}
+.staff a{color:#12375a}
+footer{
+ background:#07539b;
+ color:white;
+ text-align:center;
+ padding:20px;
+ font-size:13px;
+}
+</style>
+<link rel="manifest" href="manifest.json" crossorigin="use-credentials">
+</head>
+<body>
+<div class="app">
+<header>
+<h2>ACCESS RIDES</h2>
+<small>& Airport Taxi Services</small>
+</header>
+
+<section class="hero">
+<img class="logo" src="assets/logo.png" alt="Access Rides official logo">
+<h1>Welcome to Access Rides</h1>
+<p class="slogan">More than a ride...</p>
+</section>
+
+<main>
+<h2>Our Services</h2>
+
+<div class="services">
+<a class="service" href="https://wa.me/17673155911?text=Hello%20Access%20Rides.%20I%20would%20like%20to%20book%20an%20airport%20taxi.">
+<span>✈️</span>
+<strong>Airport Taxi</strong>
+<small>Airport pickup and drop-off</small>
+</a>
+
+<a class="service" href="rentals.html">
+<span>🚗</span>
+<strong>Car Rentals</strong>
+<small>Reserve your vehicle</small>
+</a>
+
+<a class="service" href="https://wa.me/17673155911?text=Hello%20Access%20Rides.%20I%20need%20dock%20to%20door%20delivery.">
+<span>🚚</span>
+<strong>Dock to Door</strong>
+<small>Goods transportation</small>
+</a>
+
+<a class="service" href="https://wa.me/17673155911?text=Hello%20Access%20Rides.%20I%20would%20like%20a%20private%20transfer.">
+<span>📍</span>
+<strong>Private Transfers</strong>
+<small>Travel in comfort</small>
+</a>
+</div>
+
+<a class="btn yellow" href="customer-availability.html">
+📅 Check Vehicle Availability
+</a>
+
+<a class="btn blue" href="rentals.html">
+🚘 Book a Rental Vehicle
+</a>
+
+<a class="btn green" href="https://wa.me/17673155911">
+💬 Contact Us on WhatsApp
+</a>
+
+<div class="contact">
+<strong>Contact Access Rides</strong><br>
+<a href="tel:+17673155911">+1 (767) 315-5911</a><br>
+<a href="tel:+17672250976">+1 (767) 225-0976</a><br>
+Dominica, West Indies
+</div>
+
+<div class="staff">
+<strong>🔒 Staff Access</strong><br><br>
+<a href="index.html">Owner & Driver GPS Login</a><br><br>
+<a href="bookings.html">Owner Booking Dashboard</a>
+</div>
+</main>
+
+<footer>
+Access Rides & Airport Taxi Services<br><br>
+More than a ride...
+</footer>
+</div>
+
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js')
+      .then(() => console.log('Access Rides service worker registered'))
+      .catch(error => console.error('Registration failed:', error));
+  });
+}
+</script>
+
+</body>
+</html>

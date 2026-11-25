@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#07539b">
+<title>Access Rides | Rental Vehicles</title>
+<link rel="icon" href="assets/icon-192.png">
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#edf4fa;color:#12375a;font-family:Arial,sans-serif}
+main{max-width:650px;margin:auto;padding:20px}
+header{background:#07539b;color:white;text-align:center;padding:24px}
+header img{width:150px;border-radius:18px}
+.vehicle{background:white;padding:22px;border-radius:15px;margin:15px 0;border:1px solid #dce8f4}
+.price{font-size:25px;font-weight:bold;color:#07539b}
+.status{color:#15803d;font-weight:bold}
+.btn{display:block;text-align:center;padding:15px;border-radius:12px;background:#07539b;color:white;text-decoration:none;font-weight:bold;margin:12px 0}
+.green{background:#15803d}
+.yellow{background:#ffda27;color:#12375a}
+.note{font-size:14px;line-height:1.6}
+</style>
+</head>
+<body>
+<header>
+<img src="assets/logo.png" alt="Access Rides">
+<h1>Rental Vehicles</h1>
+<p>More than a ride...</p>
+</header>
+<main>
+<h2>Explore Our Fleet</h2>
+<p class="note">Vehicles listed are offered for rental. Availability for your selected dates is subject to confirmation.</p>
+<div id="fleet" aria-live="polite">Loading rental vehicles...</div>
+<a class="btn green" href="https://wa.me/17673155911">Contact Us on WhatsApp</a>
+<a class="btn yellow" href="app.html">Return to App Home</a>
+</main>
+<script>
+const firebaseConfig = {
+apiKey:'AIzaSyD5eLq0stOSjkB5ho75dkaD5F-eman6r6Q',
+authDomain:'access-rides.firebaseapp.com',
+databaseURL:'https://access-rides-default-rtdb.firebaseio.com',
+projectId:'access-rides',
+storageBucket:'access-rides.firebasestorage.app',
+messagingSenderId:'791788610379',
+appId:'1:791788610379:web:bcd5e91d770a886fe4bece',
+measurementId:'G-SJ510R4Z77'
+};
+const fleet = document.getElementById('fleet');
+
+function loadScript(src){
+ return new Promise((resolve,reject)=>{
+  const s=document.createElement('script');
+  s.src=src;
+  s.onload=resolve;
+  s.onerror=reject;
+  document.head.appendChild(s);
+ });
+}
+
+async function start(){
+ try{
+  const base='https://www.gstatic.com/firebasejs/10.14.1/';
+  await loadScript(base+'firebase-app-compat.js');
+  await loadScript(base+'firebase-database-compat.js');
+
+  if(!firebase.apps.length)firebase.initializeApp(firebaseConfig);
+
+  firebase.database().ref('publicRentalFleet').on('value',snapshot=>{
+   fleet.replaceChildren();
+   let count=0;
+
+   snapshot.forEach(child=>{
+    const v=child.val();
+    if(!v||v.status!=='Available'||!Number.isFinite(Number(v.dailyRate))||Number(v.dailyRate)<=0)return;
+
+    const card=document.createElement('section');
+    card.className='vehicle';
+
+    const name=document.createElement('h2');
+    name.textContent=v.name||'Rental Vehicle';
+
+    const price=document.createElement('p');
+    price.className='price';
+    price.textContent='EC$'+Number(v.dailyRate).toFixed(2)+' / day';
+
+    const status=document.createElement('p');
+    status.className='status';
+    status.textContent='Offered for rental';
+
+    const book=document.createElement('a');
+    book.className='btn';
+    book.href='rentals.html';
+    book.textContent='Book Now';
+
+    card.append(name,price,status,book);
+    fleet.appendChild(card);
+    count++;
+   });
+
+   if(!count)fleet.textContent='No vehicles currently listed for rental.';
+  },error=>{
+   fleet.textContent='Unable to load vehicles. Please contact Access Rides.';
+  });
+ }catch(error){
+  fleet.textContent='Connection unavailable. Please try again later.';
+ }
+}
+start();
+</script>
+</body>
+</html>
