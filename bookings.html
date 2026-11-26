@@ -663,6 +663,53 @@ window.open("https://wa.me/" + number + "?text=" + encodeURIComponent(msg),"_bla
 };
 
 card.appendChild(waBtn);
+
+const deleteBtn = document.createElement("button");
+deleteBtn.textContent = "Delete Booking";
+deleteBtn.style.background = "#c62828";
+deleteBtn.style.color = "#ffffff";
+deleteBtn.style.width = "100%";
+deleteBtn.style.marginTop = "10px";
+
+deleteBtn.addEventListener("click", async () => {
+  deleteBtn.disabled = true;
+
+  try {
+    const ref = db.ref("bookings").child(id);
+    const snapshot = await ref.once("value");
+
+    if (!snapshot.exists()) {
+      alert("This booking no longer exists.");
+      return;
+    }
+
+    const current = snapshot.val();
+    const amountPaid = Number(current.amountPaid || 0);
+
+    let warning = "Permanently delete this booking?";
+
+    if (amountPaid > 0) {
+      warning += "\n\nWARNING: This booking has EC$" +
+        amountPaid.toFixed(2) +
+        " in recorded payments.";
+    }
+
+    warning += "\n\nBooking and payment history will be removed. No refund will be issued.";
+
+    if (!window.confirm(warning)) return;
+
+    await ref.remove();
+    alert("Booking deleted successfully.");
+
+  } catch (error) {
+    alert("Unable to delete booking: " + error.message);
+  } finally {
+    deleteBtn.disabled = false;
+  }
+});
+
+card.appendChild(deleteBtn);
+
   root.appendChild(card);
 }
 }
